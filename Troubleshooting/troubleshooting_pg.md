@@ -8,12 +8,6 @@
 
 你可能需要检查下集群中有关 Pool 、 PG 和 CRUSH 的配置项，做以适当的调整。
 
-一般来说，你的集群中需要多于 1 个 OSD，并且存储池的 size 要大于 1 副本。
-
-#### 单节点集群
-
-有时候，我们需要搭建一个单节点的 Ceph 实验环境。此时，在开始创建 monitor 和 OSD 之前，你需要把 Ceph 配置文件中的 `osd crush chooseleaf type` 选项从默认值 `1` （表示 `host` 或 `node`）修改为 `0` （表示 `osd`）。这样做是告诉 Ceph 允许把数据的不同副本分布到同一 host 的 OSDs 上。
-
 #### OSD 个数小于副本数
 
 如果你已经启动了 2 个 OSD，它们都处于 `up` 和 `in` 的状态，但 PG 仍未达到 `active + clean` 状态，那可能是给 `osd pool default size` 设置了一个大于 `2` 的值。
@@ -287,8 +281,11 @@ osd.1 的日志里也提示修复成功：
 
 	ceph pg repair {pg_id}
 
-6、检查 Ceph 集群是否恢复到 `HEALTH_OK` 状态。
+6、检查 Ceph 集群是否恢复到 `HEALTH_OK` 状态。】
 
+7、 最后，当pg不一致，且有object数据丢失而无法修复时，需要删除这个object恢复集群状态 [Ceph删除OSD上一个异常object](https://ceph.com/planet/ceph%E5%88%A0%E9%99%A4osd%E4%B8%8A%E4%B8%80%E4%B8%AA%E5%BC%82%E5%B8%B8object/)  
+
+**重要:** 该操作一定会丢失数据
 
 ### 3.9 Too Many/Few PGs per OSD
 

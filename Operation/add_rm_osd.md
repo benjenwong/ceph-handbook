@@ -26,7 +26,7 @@
 3、如果准备用于 OSD 的是单独的磁盘而非系统盘，先把它挂载到刚创建的目录下：
 
     ssh {new-osd-host}
-    sudo mkfs -t {fstype} /dev/{drive}
+    sudo mkfs -t xfs /dev/{drive}
     sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/ceph-{osd-number}
 
 4、初始化 OSD 数据目录。
@@ -52,7 +52,7 @@
 
 7、启动 OSD。把 OSD 加入 Ceph 后， OSD 就在配置里了。然而它还没运行，它现在的状态为 `down & out` 。你必须先启动 OSD 它才能收数据。在 Ubuntu 上执行：
 
-	sudo start ceph-osd id={osd-num}
+	systemctl start ceph-osd@{osd-num}
 
 一旦你启动了 OSD ，其状态就变成了 `up & in` 。
 
@@ -82,9 +82,11 @@
 
 4、准备 OSD。
 
-    ceph-deploy osd prepare {node-name}:{data-disk}[:{journal-disk}]
-    ceph-deploy osd prepare osdserver1:sdb:/dev/ssd
-	ceph-deploy osd prepare osdserver1:sdc:/dev/ssd
+    ceph-deploy osd prepare {node-name}:{data-disk}[:{journal-disk}] --filestore
+    ceph-deploy osd prepare osdserver1:sdb:/dev/ssd --filestore
+	ceph-deploy osd prepare osdserver1:sdc:/dev/ssd --filestore
+
+**重要:** L版ceph-deploy默认后端文件系统类型为blustore，需手动加上 `--filestore` 指定为filestore
 
 `prepare` 命令只准备 OSD 。在大多数操作系统中，硬盘分区创建后，不用 `activate` 命令也会自动执行 `activate` 阶段（通过 Ceph 的 `udev` 规则）。
 
@@ -94,9 +96,9 @@
 
 5、准备好 OSD 后，可以用下列命令激活它。
 
-	ceph-deploy osd activate {node-name}:{data-disk-partition}[:{journal-disk-partition}]
-	ceph-deploy osd activate osdserver1:/dev/sdb1:/dev/ssd1
-	ceph-deploy osd activate osdserver1:/dev/sdc1:/dev/ssd2
+	ceph-deploy osd activate {node-name}:{data-disk-partition}
+	ceph-deploy osd activate osdserver1:/dev/sdb1
+	ceph-deploy osd activate osdserver1:/dev/sdc1
 
 `activate` 命令会让 OSD 进入 `up` 且 `in` 状态。该命令使用的分区路径是前面 `prepare` 命令创建的。
 
@@ -130,7 +132,7 @@
 5、删除 OSD 。
 
 	ceph osd rm {osd-num}
-	#for example
+	# for example
 	ceph osd rm 1
 
 6、卸载 OSD 的挂载点。

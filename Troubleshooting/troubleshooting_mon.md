@@ -38,7 +38,7 @@ Monitor 维护着 Ceph 集群的信息，如果 Monitor 无法正常提供服务
 
 	ceph --admin-daemon /var/run/ceph/ceph-mon.<id>.asok <command>
 
-对于 Dumpling 及后续版本，你可以用另一个（推荐的）命令：
+你也可以用另一个（推荐的）命令：
 
 	ceph daemon mon.<id> <command>
 
@@ -213,65 +213,6 @@ Monitor 会用 `HEALTH_WARN` 的方式警告你。 `ceph health detail` 应该�
 
 或者，如果你的环境**允许**，也可以直接关闭主机的防火墙。
 
-### 1.5 Monitor 数据库失败
-
-#### 数据库崩溃的表现
-
-Ceph monitor 把集群的各种 map 信息存放在 key/value 数据库中，如 LevelDB 。如果 monitor 是因为数据库崩溃而失败，在 monitor 的 log 日志中应该会有如下错误信息：
-
-	Corruption: error in middle of record
-
-或：
-
-	Corruption: 1 missing files; e.g.: /var/lib/ceph/mon/mon.0/store.db/1234567.ldb
-
-#### 通过健康的 Monitor(s) 恢复
-
-如果还有幸存的 monitor，我们通常可以用新的数据库替换崩溃的数据库。并且在启动后，新加入的成员会和其他健康的伙伴进行同步，一旦同步完成，它就可以为客户端提供服务了。
-
-#### 通过 OSDs 恢复
-
-但是万一所有的 monitors 都同时失败了该怎么办？由于建议用户在部署集群时至少安装 3 个 monitors，同时失效的可能性较小。但是数据中心意外的断电，再加上磁盘/文件系统配置不当，可能会引起底层文件系统失败，从而杀掉所有的 monitors 。这种情况下，我们可以通过存放在 OSDs 上的信息来恢复 monitor 的数据库：
-
-	ms=/tmp/mon-store
-	mkdir $ms
-	# collect the cluster map from OSDs
-	for host in $hosts; do
-  		rsync -avz $ms user@host:$ms
-  		rm -rf $ms
-  		ssh user@host <<EOF
-    		for osd in /var/lib/osd/osd-*; do
-      			ceph-objectstore-tool --data-path $osd --op update-mon-db --mon-store-path $ms
-    		done
-  		EOF
-  		rsync -avz user@host:$ms $ms
-	done
-	# rebuild the monitor store from the collected map, if the cluster does not
-	# use cephx authentication, we can skip the following steps to update the
-	# keyring with the caps, and there is no need to pass the "--keyring" option.
-	# i.e. just use "ceph-monstore-tool /tmp/mon-store rebuild" instead
-	ceph-authtool /path/to/admin.keyring -n mon. \
-	  --cap mon allow 'allow *'
-	ceph-authtool /path/to/admin.keyring -n client.admin \
-	  --cap mon allow 'allow *' --cap osd 'allow *' --cap mds 'allow *'
-	ceph-monstore-tool /tmp/mon-store rebuild -- --keyring /path/to/admin.keyring
-	# backup corrupted store.db just in case
-	mv /var/lib/ceph/mon/mon.0/store.db /var/lib/ceph/mon/mon.0/store.db.corrupted
-	mv /tmp/mon-store/store.db /var/lib/ceph/mon/mon.0/store.db
-
-上面的这些步骤：
-
-1. 从所有的 OSD 主机上收集 map 信息。
-2. 重建数据库。
-3. 用恢复副本替换 mon.0 上崩溃的数据库。
-
-**已知的限制**
-
-下面这些信息无法通过上述步骤恢复：
-
-- **一些新增的 keyring** ： 通过 `ceph auth add` 命令增加的所有 OSD keyrings 都可以恢复。用 `ceph-monstore-tool` 可以导入 `client.admin` 的 keyring 。但是 MDS 和其他 keyrings 在被恢复的那个 monitor 数据库中就会丢失。你可能需要手动重新添加一下。  
-- **pg 的设置**：通过 `ceph pg set_full_ratio` 和 `ceph pg set_nearfull_ratio` 命令设置的 `full ratio` 和 `nearfull ratio` 值会丢失。  
-- **MDS Maps**：MDS maps 会丢失。
 
 #### 磁盘空间不足导致 MON DOWN
 
@@ -281,7 +222,3 @@ Ceph monitor 把集群的各种 map 信息存放在 key/value 数据库中，如
 	2016-09-01 16:45:54.994747 7fb1cac09700 -1 mon.jyceph01@0(leader).data_health(62) reached critical levels of available space on local monitor storage -- shutdown!
 
 清理本地磁盘，增大可用空间，重启 monitor 进程，即可恢复正常。
-
-#### 通过 Mon 数据库的备份恢复
-
-具体请参考本手册第三部分 [2. Monitor 的备份和恢复](../Advance_usage/mon_bakcup.md) 。

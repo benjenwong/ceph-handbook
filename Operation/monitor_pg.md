@@ -165,27 +165,3 @@ Ceph 会输出成 JSON 格式。
 Ceph 客户端索取最新集群 map、并用 CRUSH 算法计算对象到 PG 的映射，然后计算如何动态地把 PG 分配到 OSD 。要定位对象位置，只需要知道对象名和存储池名字：
 
     ceph osd map {poolname} {object-name}
-
-##### 练习：定位一个对象
-
-我们先创建一个对象。给 rados put 命令指定一对象名、一个包含数据的测试文件路径、和一个存储池名字，例如：
-
-    rados put {object-name} {file-path} --pool=data
-    rados put test-object-1 testfile.txt --pool=data
-
-用下列命令确认 Ceph 对象存储已经包含此对象：
-
-    rados -p data ls
-
-现在可以定位对象了：
-
-    ceph osd map {pool-name} {object-name}
-    ceph osd map data test-object-1
-
-Ceph 应该输出对象的位置，例如：
-
-    osdmap e537 pool 'data' (0) object 'test-object-1' -> pg 0.d1743484 (0.4) -> up [1,0] acting [1,0]
-
-要删除测试对象，用 rados rm 即可，如：
-
-    rados rm test-object-1 --pool=data
