@@ -1,5 +1,6 @@
-# Summary
+# Table of contents
 
+<<<<<<< HEAD
 * [简介](README.md)
 * [第一部分：常用操作](Operation/common_operations.md)
     * [1. 操作集群](Operation/operate_cluster.md)
@@ -28,4 +29,7 @@
     * [7. 查看 RBD 镜像的实际大小](Advance_usage/rbd_real_size.md)
     * [8. 统计 OSD 上 PG 的数量](Advance_usage/cal_pg_per_osd.md)
     * [9. 查看使用 RBD 镜像的客户端](Advance_usage/list_rbd_watcher.md)
+=======
+* [Initial page](README.md)
+>>>>>>> 765b46633d9cd591676d8a7b034d2f4c115f31e4
 
