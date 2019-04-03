@@ -9,8 +9,6 @@
     * [5. 用户管理](Operation/user_management.md)
     * [6. 增加/删除 OSD](Operation/add_rm_osd.md)
     * [7. 操作 Pool](Operation/operate_pool.md)
-    * [8. 管理 Crushmap](Operation/manage_crushmap.md)
-    * [9. 修改集群配置](Operation/change_cluster_conf.md)
     * [10. 日志和调试](Operation/log_debug.md)
 * [第二部分：故障处理](Troubleshooting/troubleshooting.md)
     * [1. 常见 MON 故障处理](Troubleshooting/troubleshooting_mon.md)

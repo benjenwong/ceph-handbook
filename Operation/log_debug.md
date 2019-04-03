@@ -56,40 +56,6 @@
 	        debug mds log = 1
 	        debug mds migrator = 1
 
-### 12.3 加快日志更迭
-
-如果你的系统盘比较满，可以修改 `/etc/logrotate.d/ceph` 内的日志滚动配置以加快滚动。在滚动频率后增加一个日志 `size` 选项（达到此大小就滚动）来加快滚动（通过 cronjob ）。例如默认配置大致如此：
-
-	rotate 7
-	weekly
-	compress
-	sharedscripts
-
-增加一个 `size` 选项。
-
-	rotate 7
-	weekly
-	size 500M
-	compress
-	sharedscripts
-
-然后，打开 crontab 编辑器。
-
-	crontab -e
-
-最后，增加一条用以检查 `/etc/logrorate.d/ceph` 文件的语句。
-
-	30 * * * * /usr/sbin/logrotate /etc/logrotate.d/ceph >/dev/null 2>&1
-
-本例中每 30 分钟检查一次 `/etc/logrorate.d/ceph` 文件。
-
-### 12.4 VALGRIND 工具
-
-调试时可能还需要追踪内存和线程问题。你可以在 Valgrind 中运行单个守护进程、一类进程、或整个集群。 Valgrind 是计算密集型程序，应该只用于开发或调试 Ceph，否则它会拖慢系统。Valgrind 的消息会记录到 `stderr` 。
-
-### 12.5 子系统、日志和调试选项
-
-大多数情况下，你可以通过子系统打开调试日志输出。
 
 #### CEPH 子系统概览
 
