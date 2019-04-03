@@ -1,81 +1,73 @@
 # 2. 监控集群
+------------
 
-----------
+## 2.1 查看集群状态
 
-集群运行起来后，你可以用 `ceph` 工具来监控集群的状态，典型的监控项目包括检查 OSD 状态、monitor 的状态、PG 的状态和元数据服务器的状态。
+ceph -s
 
-### 2.1 交互模式
+输出如下,与输出解释如下
 
-要在交互模式下运行 `ceph` ，不要带参数运行 `ceph` ，例如：
+```bash
+ceph -s
+  cluster:
+    id:     99138b56-113d-4347-8857-7bbb92ced5d1
+    health: HEALTH_OK
+ # 集群信息：集群uuid与状态
 
-    ceph
-    ceph> health
-    ceph> status
-    ceph> quorum_status
-    ceph> mon_status
-    
-### 2.2 检查集群的监控状况
-启动集群后、读写数据前，先检查下集群的健康状态。你可以用下面的命令检查：
+  services:
+    mon: 1 daemons, quorum s3-9-30-17-169
+    # mon: 个数 主机
+    mgr: s3-9-30-17-169(active)
+    # mgr: 主机
+    osd: 6 osds: 6 up, 6 in
+    # osd: 节点总数 up数 in数
+    rgw: 1 daemon active
+    # rgw: 服务个数
+ # 已安装的服务信息
+ 
+  data:
+    pools:   16 pools, 12032 pgs
+    # pool总数 pg总数
+    objects: 3.11M objects, 86.4GiB
+    # 对象总数 对象占用空间
+    usage:   213GiB used, 1.40TiB / 1.61TiB avail
+    # 数据使用量 可用量/总量
+    pgs:     12032 active+clean
+    # pg状态
+# 数据信息
+```
 
-	ceph health
+## 2.2 查看集群使用情况
 
-集群刚起来的时候，你也许会碰到像 `HEALTH_WARN XXX num placement groups stale` 这样的健康告警，等一会再检查下。集群准备好的话 `ceph health` 会给出 `HEALTH_OK` 这样的消息，这时候就可以开始使用集群了。
+要检查集群的数据用量及其在存储池内的分布情况，可以用 df 选项，它和 Linux 上的 df 相似。如下：
 
-### 2.3 观察集群
-要观察集群内正发生的事件，打开一个新终端，然后输入：
+ceph df
 
-	ceph -w
+输出如下:
 
-Ceph 会打印各种事件。例如一个包括 3 个 Mon、和 33 个 OSD 的 Ceph 集群可能会打印出这些：
-
-	  cluster b84b887e-9e0c-4211-8423-e0596939cd36
-       health HEALTH_OK
-       monmap e1: 3 mons at {OPS-ceph1=192.168.219.30:6789/0,OPS-ceph2=192.168.219.31:6789/0,OPS-ceph3=192.168.219.32:6789/0}
-              election epoch 94, quorum 0,1,2 OPS-ceph1,OPS-ceph2,OPS-ceph3
-       osdmap e1196: 33 osds: 33 up, 33 in
-        pgmap v1789894: 2752 pgs, 7 pools, 590 GB data, 110 kobjects
-              1154 GB used, 83564 GB / 84719 GB avail
-                  2752 active+clean
-	client io 0 B/s rd, 25852 B/s wr, 7 op/s
-
-	2016-11-04 20:20:13.682953 mon.0 [INF] pgmap v1789893: 2752 pgs: 2752 active+clean; 590 GB data, 1154 GB used, 83564 GB / 84719 GB avail; 0 B/s rd, 44908 B/s wr, 14 op/s
-	2016-11-04 20:20:15.686275 mon.0 [INF] pgmap v1789894: 2752 pgs: 2752 active+clean; 590 GB data, 1154 GB used, 83564 GB / 84719 GB avail; 0 B/s rd, 25852 B/s wr, 7 op/s
-	2016-11-04 20:20:16.690680 mon.0 [INF] pgmap v1789895: 2752 pgs: 2752 active+clean; 590 GB data, 1154 GB used, 83564 GB / 84719 GB avail; 0 B/s rd, 32345 B/s wr, 16 op/s
-	2016-11-04 20:20:17.694259 mon.0 [INF] pgmap v1789896: 2752 pgs: 2752 active+clean; 590 GB data, 1154 GB used, 83564 GB / 84719 GB avail; 0 B/s rd, 57170 B/s wr, 32 op/s
-	2016-11-04 20:20:18.698200 mon.0 [INF] pgmap v1789897: 2752 pgs: 2752 active+clean; 590 GB data, 1154 GB used, 83564 GB / 84719 GB avail; 0 B/s rd, 33148 B/s wr, 16 op/s
-	2016-11-04 20:20:20.701697 mon.0 [INF] pgmap v1789898: 2752 pgs: 2752 active+clean; 590 GB data, 1154 GB used, 83564 GB / 84719 GB avail; 0 B/s rd, 16333 B/s wr, 5 op/s
-	2016-11-04 20:20:21.705719 mon.0 [INF] pgmap v1789899: 2752 pgs: 2752 active+clean; 590 GB data, 1154 GB used, 83564 GB / 84719 GB avail; 0 B/s rd, 17705 B/s wr, 12 op/s
-
-输出信息里包含：
-
-- 集群的 ID
-- 集群健康状况
-- monitor map 版本和 mon 法定人数状态
-- OSD map 版本和 OSD 状态摘要
-- PG map 版本
-- PG 和 Pool 的数量
-- 集群存储的数据量，对象的总量，以及集群的已用容量/总容量/可用容量
-- 客户端的 iops 信息
-
-### 2.4 检查集群的使用情况
-要检查集群的数据用量及其在存储池内的分布情况，可以用 `df` 选项，它和 Linux 上的 `df` 相似。如下：
-
-	ceph df
-
-得到的输出信息大致如下：
-
-    GLOBAL:
-        SIZE       AVAIL      RAW USED     %RAW USED 
-        84719G     83564G        1154G          1.36 
-	POOLS:
-        NAME                  ID     USED       %USED     MAX AVAIL     OBJECTS 
-    	rbd                   0           0         0        41381G           0 
-    	volumes               1        284G      0.34        41381G       57904 
-    	images                2        224G      0.27        41381G       39024 
-    	backups               3           0         0        41381G           1 
-    	vms                   4      28736M      0.03        41381G        4325 
-    	volumes-ssd           5      53758M      0.06        41381G       11854 
-    	fitos_backup_pool     7       1286M         0        41381G         354 
+```bash
+GLOBAL:
+    SIZE        AVAIL       RAW USED     %RAW USED 
+    1.61TiB     1.40TiB       213GiB         12.97 
+POOLS:
+    NAME                         ID     USED        %USED     MAX AVAIL     OBJECTS 
+    .rgw.root                    1      3.40KiB         0        673GiB          16 
+    china.rgw.buckets.data       2      86.4GiB     11.38        673GiB     3113441 
+    china.rgw.buckets.extra      3           0B         0        673GiB           0 
+    china.rgw.buckets.index      4           0B         0        673GiB         115 
+    china.rgw.buckets.non-ec     5           0B         0        673GiB           0 
+    china.rgw.control            6           0B         0        673GiB           8 
+    china.rgw.data.root          7           0B         0        673GiB           0 
+    china.rgw.gc                 8           0B         0        673GiB           0 
+    china.rgw.intent-log         9           0B         0        673GiB           0 
+    china.rgw.log                10        149B         0        673GiB        1204 
+    china.rgw.meta               11     2.70KiB         0        673GiB          14 
+    china.rgw.usage              12          0B         0        673GiB           0 
+    china.rgw.users.email        13          0B         0        673GiB           0 
+    china.rgw.users.keys         14          0B         0        673GiB           0 
+    china.rgw.users.swift        15          0B         0        673GiB           0 
+    china.rgw.users.uid          16          0B         0        673GiB           0 
+```
 
 输出的 **GLOBAL** 段展示了数据所占用集群存储空间的概要。
 
@@ -90,145 +82,80 @@ Ceph 会打印各种事件。例如一个包括 3 个 Mon、和 33 个 OSD 的 C
 - **ID：**存储池唯一标识符。
 - **USED：**大概数据量，单位为 KB 、MB 或 GB ；
 - **%USED：**各存储池的大概使用率。
+- **MAX AVAIL：**最大可用量，一般为可用总量/副本数
 - **Objects：**各存储池内的大概对象数。
 
 注意： **POOLS** 段内的数字是估计值，它们不包含副本、快照或克隆。因此，各 Pool 的 **USED** 和 **%USED** 数量之和不会达到 **GLOBAL** 段中的 **RAW USED** 和 **%RAW USED** 数量。
 
-### 2.5 检查集群状态
-要检查集群的状态，执行下面的命令：
 
-    ceph status
+## 2.3 查看osd状态
 
-或者：
+osd crush map查看
 
-    ceph -s
-
-在交互模式下，输入 `status` 然后按回车：
-
-    ceph> status
-
-Ceph 将打印集群状态，例如一个包括 1 个监视器、和 2 个 OSD 的小型 Ceph 集群可能打印：
-
-    cluster b370a29d-9287-4ca3-ab57-3d824f65e339
-     health HEALTH_OK
-     monmap e1: 1 mons at {ceph1=10.0.0.8:6789/0}, election epoch 2, quorum 0 ceph1
-     osdmap e63: 2 osds: 2 up, 2 in
-      pgmap v41332: 952 pgs, 20 pools, 17130 MB data, 2199 objects
-        	115 GB used, 167 GB / 297 GB avail
-                   1 active+clean+scrubbing+deep
-             	 951 active+clean
-
-### 2.6 检查 OSD 状态
-你可以执行下列命令来确定 OSD 状态为 `up` 且 `in` ：
-
-    ceph osd stat
-
-或者：
-
-    ceph osd dump
-
-你也可以根据 OSD 在 CRUSH MAP 里的位置来查看：
-
-    ceph osd tree
+ceph osd tree
 
 Ceph 会打印 CRUSH 树，包括 host 的名称、它上面的 OSD 例程、状态及权重：
 
-	ID WEIGHT  TYPE NAME       UP/DOWN REWEIGHT PRIMARY-AFFINITY
-    -1 0.05997 root default
-    -2 0.01999     host ceph01
-     0 0.01999         osd.0        up  1.00000          1.00000
-    -3 0.01999     host ceph02
-     1 0.01999         osd.1        up  1.00000          1.00000
-    -4 0.01999     host ceph03
-     2 0.01999         osd.2        up  1.00000          1.00000
+```bash
+ID CLASS WEIGHT  TYPE NAME               STATUS REWEIGHT PRI-AFF
+-1       1.60739 root default
+-3       1.60739     host s3-9-30-17-169
+ 0   ssd 0.26790         osd.0               up  1.00000 1.00000
+ 1   ssd 0.26790         osd.1               up  1.00000 1.00000
+ 2   ssd 0.26790         osd.2               up  1.00000 1.00000
+ 3   ssd 0.26790         osd.3               up  1.00000 1.00000
+ 4   ssd 0.26790         osd.4               up  1.00000 1.00000
+ 5   ssd 0.26790         osd.5               up  1.00000 1.00000
+ ```
 
-另请参考本手册第一部分 [3. 监控 OSD](./monitor_osd.md)。
+ceph osd dump
 
-### 2.7 检查 Mon 状态
+Ceph 会打印OSD MAP summary
 
-如果集群中有多个 Mon（很可能），你启动集群后、读写数据前应该检查 Mon 法定人数状态。运行着多个 Mon 时必须形成法定人数，最好周期性地检查 Mon 状态来确定它们在运行。
-
-要查看 Mon map，执行下面的命令：
-
-    ceph mon stat
-
-或者：
-
-    ceph mon dump
-
-要检查监视器的法定人数状态，执行下面的命令：
-
-    ceph quorum_status -f json-pretty
-
-Ceph 会返回法定人数状态，例如，包含 3 个监视器的 Ceph 集群可能返回下面的：
-
-    { 
-      "election_epoch": 94,
-      "quorum": [
-            0,
-            1,
-            2
-      ],
-      "quorum_names": [
-            "OPS-ceph1",
-            "OPS-ceph2",
-            "OPS-ceph3"
-      ],
-      "quorum_leader_name": "OPS-ceph1",
-      "monmap": { "epoch": 1,
-          "fsid": "b84b887e-9e0c-4211-8423-e0596939cd36",
-	      "modified": "2016-11-04 20:19:57.333655",
-	      "created": "2016-06-23 14:53:07.171558",
-	      "mons": [
-			  {
-                  "rank": 0,
-			      "name": "OPS-ceph1",
-			      "addr": "192.168.219.30:6789\/0"
-              },
-		      {
-                  "rank": 1,
-			      "name": "OPS-ceph2",
-			      "addr": "192.168.219.31:6789\/0"
-              },
-			  {
-                  "rank": 2,
-			      "name": "OPS-ceph3",
-			      "addr":"192.168.219.32:6789\/0"
-              }
-           ]
-       }
-    }
-
-### 2.8 检查 MDS 状态
-
-元数据服务器为 Ceph 文件系统提供元数据服务，不过在当前生产环境中并未部署 MDS 。元数据服务器有两种状态： `up | down` 和 `active | inactive` ，执行下面的命令查看元数据服务器状态为 `up` 且 `active` ：
-
-    ceph mds stat
-
-要展示元数据集群的详细状态，执行下面的命令：
-
-    ceph mds dump
-
-### 2.9 检查 PG 状态
-
-PG 把对象映射到 OSD 。监控 PG 时，我们希望它们的状态是 `active` 且 `clean` 。详情请参考本手册第一部分 [4. 监控 PG](./monitor_pg.md)
-
-### 2.10 使用管理套接字
-
-Ceph 管理套接字允许你通过套接字接口查询守护进程，它们默认存在于 `/var/run/ceph` 下。要通过管理套接字访问某个守护进程，先登录它所在的主机、再执行下列命令：
-
-    ceph daemon {daemon-name}
-    ceph daemon {path-to-socket-file}
-
-比如，这是下面这两种用法是等价的：
-
-    ceph daemon osd.0 foo
-    ceph daemon /var/run/ceph/ceph-osd.0.asok foo
-
-用下列命令查看可用的管理套接字命令：
-
-    ceph daemon {daemon-name} help
-
-管理套接字命令允许你在运行时查看和修改配置。
-
-另外，你可以在运行时直接修改配置选项（也就是说管理套接字会绕过 Mon，不要求你直接登录宿主主机，不像 `ceph {daemon-type} tell {id} injectargs` 会依赖监视器）。
+```bash
+epoch 58
+# OSD CRUSH MAP版本
+fsid 99138b56-113d-4347-8857-7bbb92ced5d1
+created 2019-03-07 19:08:38.063429
+modified 2019-04-03 10:36:23.140853
+flags sortbitwise,recovery_deletes,purged_snapdirs
+# 集群FLAGS
+crush_version 13
+full_ratio 0.95
+# 当OSD数据使用率达到95%，ceph会将OSD标记为full
+backfillfull_ratio 0.9
+# 当OSD数据使用率达到90%，集群会将该OSD的数据backfill到其他OSD
+nearfull_ratio 0.85
+# 当OSD数据使用率达到85%，ceph会将OSD标记为nearfull
+require_min_compat_client jewel
+min_compat_client jewel
+# 客户端兼容最低版本
+require_osd_release luminous
+# osd版本
+pool 1 '.rgw.root' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 53 flags hashpspool stripe_width 0 application rgw
+pool 2 'china.rgw.buckets.data' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 8192 pgp_num 8192 last_change 54 flags hashpspool stripe_width 0 application rgw
+pool 3 'china.rgw.buckets.extra' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 28 flags hashpspool stripe_width 0
+pool 4 'china.rgw.buckets.index' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 55 flags hashpspool stripe_width 0 application rgw
+pool 5 'china.rgw.buckets.non-ec' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 30 flags hashpspool stripe_width 0
+pool 6 'china.rgw.control' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 56 flags hashpspool stripe_width 0 application rgw
+pool 7 'china.rgw.data.root' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 32 flags hashpspool stripe_width 0
+pool 8 'china.rgw.gc' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 33 flags hashpspool stripe_width 0
+pool 9 'china.rgw.intent-log' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 34 flags hashpspool stripe_width 0
+pool 10 'china.rgw.log' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 57 flags hashpspool stripe_width 0 application rgw
+pool 11 'china.rgw.meta' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 58 flags hashpspool stripe_width 0 application rgw
+pool 12 'china.rgw.usage' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 37 flags hashpspool stripe_width 0
+pool 13 'china.rgw.users.email' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 38 flags hashpspool stripe_width 0
+pool 14 'china.rgw.users.keys' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 39 flags hashpspool stripe_width 0
+pool 15 'china.rgw.users.swift' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 40 flags hashpspool stripe_width 0
+pool 16 'china.rgw.users.uid' replicated size 2 min_size 1 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 last_change 41 flags hashpspool stripe_width 0
+# 分别为 poolid ,poolname ,副本数 ,最小可读写副本数 ,crush_rule id……
+max_osd 6
+# osd总数
+osd.0 up   in  weight 1 up_from 5 up_thru 49 down_at 0 last_clean_interval [0,0) 9.30.17.169:6801/2944694 9.30.17.169:6802/2944694 9.30.17.169:6803/2944694 9.30.17.169:6804/2944694 exists,up ed866aac-11ed-43ef-96bb-25017db61aa8
+osd.1 up   in  weight 1 up_from 9 up_thru 49 down_at 0 last_clean_interval [0,0) 9.30.17.169:6805/2946023 9.30.17.169:6806/2946023 9.30.17.169:6807/2946023 9.30.17.169:6808/2946023 exists,up 2e350fba-25f6-4d37-9cbe-514258d72a2c
+osd.2 up   in  weight 1 up_from 13 up_thru 49 down_at 0 last_clean_interval [0,0) 9.30.17.169:6809/2947243 9.30.17.169:6810/2947243 9.30.17.169:6811/2947243 9.30.17.169:6812/2947243 exists,up 3e028840-87b2-4122-a8a8-4b4f71a206ad
+osd.3 up   in  weight 1 up_from 17 up_thru 49 down_at 0 last_clean_interval [0,0) 9.30.17.169:6813/2948340 9.30.17.169:6814/2948340 9.30.17.169:6815/2948340 9.30.17.169:6816/2948340 exists,up 33cb661f-e833-43b2-8702-e70cd89bcf8a
+osd.4 up   in  weight 1 up_from 21 up_thru 49 down_at 0 last_clean_interval [0,0) 9.30.17.169:6817/2949495 9.30.17.169:6818/2949495 9.30.17.169:6819/2949495 9.30.17.169:6820/2949495 exists,up 6ea0232c-4665-4b7f-9cff-b6414257272e
+osd.5 up   in  weight 1 up_from 25 up_thru 49 down_at 0 last_clean_interval [0,0) 9.30.17.169:6821/2950556 9.30.17.169:6822/2950556 9.30.17.169:6823/2950556 9.30.17.169:6824/2950556 exists,up d368256e-be35-44a5-aa32-6c431a2df983
+# 后面四个端口分别是： public(用来监听来自Monitor和Client的连接)  ,cluster(用来监听来自OSD Peer的连接) ,back(OSD之间心跳) ,front(mon与osd心跳检测)
+```
