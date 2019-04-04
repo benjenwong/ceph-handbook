@@ -19,7 +19,7 @@ Tstack对象存储对外部署，有两种部署模型：
 
 #### 用户创建
 
-radosgw-admin user create --uid=test --display-name="test admin user" --access-key=test --secret=test --system
+    radosgw-admin user create --uid=test --display-name="test admin user" --access-key=test --secret=test --system
 
 - `uid` 用户唯一标识符
 - `display-name` 显示名称
@@ -30,23 +30,23 @@ radosgw-admin user create --uid=test --display-name="test admin user" --access-k
 
 要获取有关用户的信息，您必须指定 uid
 
-radosgw-admin user info --uid=test
+    radosgw-admin user info --uid=test
 
 #### 用户启用与停用
 
 创建用户时，默认情况下会启用该用户。但是，您可以暂停用户权限并在以后重新启用它们。要暂停用户，请指定 用户ID
 
-radosgw-admin user suspend --uid=test
+    radosgw-admin user suspend --uid=test
 
 要重新启用已暂停的用户，请指定用户ID
 
-radosgw-admin user enable --uid=test
+    radosgw-admin user enable --uid=test
 
 #### 删除用户
 
 删除用户时，将从系统中删除用户和子用户，需要指定 uid
 
-radosgw-admin user rm --uid=test
+    radosgw-admin user rm --uid=test
 
 可选项包括：
 
@@ -65,7 +65,7 @@ radosgw-admin user rm --uid=test
 
 1. 例如，为用户增加一个S3 密钥对:
 
-radosgw-admin key create --uid=test --access-key testkey  --secret-key testkey
+    radosgw-admin key create --uid=test --access-key testkey  --secret-key testkey
 
 输出如下：
 
@@ -97,7 +97,7 @@ radosgw-admin key create --uid=test --access-key testkey  --secret-key testkey
 
 删除一个S3密钥对，需要指定用户id和 `access key`
 
-radosgw-admin key rm --uid=test --key-type=s3 --access-key=testkey
+    radosgw-admin key rm --uid=test --key-type=s3 --access-key=testkey
 
 #### 添加/删除管理员能力(权限)
 
@@ -107,23 +107,23 @@ Ceph存储集群提供了一个管理API，使用户能够通过REST API执行�
 
 要向用户添加管理能力，请执行以下操作：
 
-radosgw-admin caps add --uid={uid} --caps={caps}
+    radosgw-admin caps add --uid={uid} --caps={caps}
 
 您可以向用户，存储桶，元数据和使用（利用率）添加读取，写入或所有功能。例如：
 
---caps="[users|buckets|metadata|usage|zone]=[*|read|write|read, write]"
+    --caps="[users|buckets|metadata|usage|zone]=[*|read|write|read, write]"
 
 例如：
 
-radosgw-admin caps add --uid=test --caps="users=\*;buckets=\*"
+    radosgw-admin caps add --uid=test --caps="users=\*;buckets=\*"
 
 要从用户删除管理功能，请执行以下操作：
 
-radosgw-admin caps rm --uid=test --caps={caps}
+    radosgw-admin caps rm --uid=test --caps={caps}
 
 例如：
 
-radosgw-admin caps rm --uid=test --caps="users=\*;buckets=\*"
+    radosgw-admin caps rm --uid=test --caps="users=\*;buckets=\*"
 
 ### 7.2 用户使用情况统计
 
@@ -143,11 +143,11 @@ Ceph对象网关记录每个用户的使用情况。您也可以在日期范围�
 
 显示用量统计数据，使用 usage show 子命令。显示某一个特定 用户的用量数据，你必须指定该用户的 ID。你也可以指定开始日期、结 束日期以及是否显示日志条目。:
 
-radosgw-admin usage show --uid=test --start-date=2019-04-03 --end-date=2019-04-04
+    radosgw-admin usage show --uid=test --start-date=2019-04-03 --end-date=2019-04-04
 
 缺省用户的 ID，你也可以获取所有用户的汇总的用量信息
 
-radosgw-admin usage show --show-log-entries=false
+    radosgw-admin usage show --show-log-entries=false
 
 #### 删除用量信息
 
