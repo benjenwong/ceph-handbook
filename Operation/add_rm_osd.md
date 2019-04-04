@@ -1,62 +1,10 @@
-# 7. 增加/删除 OSD
+# 5. 增加/删除 OSD
 
 ----------
 
 如果您的集群已经在运行，你可以在运行时添加或删除 OSD 。
 
-### 7.1 增加 OSD（手动）
-
-要增加一个 OSD，要依次创建数据目录、把硬盘挂载到数据目录、把 OSD 加入集群、然后把它加入 CRUSH Map。
-
-**Tip：** Ceph 喜欢统一的硬件，与存储池无关。如果你要新增容量不一的硬盘驱动器，还需调整它们的权重。但是，为实现最佳性能，CRUSH 的分级结构最好按类型、容量来组织。
-
-1、创建 OSD。如果未指定 UUID， OSD 启动时会自动生成一个。下列命令会输出 OSD 号，后续步骤你会用到。
-
-	ceph osd create [{uuid} [{id}]]
-
-如果指定了可选参数 {id} ，那么它将作为 OSD id 。要注意，如果此数字已使用，此命令会出错。
-
-**警告：** 一般来说，我们不建议指定 {id} 。因为 ID 是按照数组分配的，跳过一些依然会浪费内存；尤其是跳过太多、或者集群很大时，会更明显。若未指定 {id} ，将用最小可用数字。
-
-2、在新 OSD 主机上创建数据目录。
-
-    ssh {new-osd-host}
-    sudo mkdir /var/lib/ceph/osd/ceph-{osd-number}
-
-3、如果准备用于 OSD 的是单独的磁盘而非系统盘，先把它挂载到刚创建的目录下：
-
-    ssh {new-osd-host}
-    sudo mkfs -t xfs /dev/{drive}
-    sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/ceph-{osd-number}
-
-4、初始化 OSD 数据目录。
-
-	ssh {new-osd-host}
-	ceph-osd -i {osd-num} --mkfs --mkkey
-
-在启动 `ceph-osd` 前，数据目录必须是空的。
-
-5、注册 OSD 认证密钥， `ceph-{osd-num}` 路径里的 `ceph` 值应该是 `$cluster-$id` ，如果你的集群名字不是 `ceph` ，那就用自己集群的名字。
-
-	ceph auth add osd.{osd-num} osd 'allow *' mon 'allow rwx' -i /var/lib/ceph/osd/ceph-{osd-num}/keyring
-
-6、把新 OSD 加入 CRUSH Map 中，以便它可以开始接收数据。用 `ceph osd crush add` 命令把 OSD 加入 CRUSH 分级结构的合适位置。如果你指定了不止一个 bucket，此命令会把它加入你所指定的 bucket 中最具体的一个，并且把此 bucket 挪到你指定的其它 bucket 之内。
-
-	ceph osd crush add {id-or-name} {weight} [{bucket-type}={bucket-name} ...]
-
-比如：
-
-	ceph osd crush add 21 0.08800 pool=ssd_root rack=ssd_rack01 host=ssd_ceph4
-
-你也可以反编译 CRUSH Map、把 OSD 加入设备列表、以 bucket 的形式加入主机（如果它没在 CRUSH Map 里）、以条目形式把设备加入主机、分配权重、重编译并应用它，详情参见本手册第一部分 [9. 修改 Crushmap](./modify_crushmap.md) 。
-
-7、启动 OSD。把 OSD 加入 Ceph 后， OSD 就在配置里了。然而它还没运行，它现在的状态为 `down & out` 。你必须先启动 OSD 它才能收数据。在 Ubuntu 上执行：
-
-	systemctl start ceph-osd@{osd-num}
-
-一旦你启动了 OSD ，其状态就变成了 `up & in` 。
-
-### 7.2 增加 OSD（ ceph-deploy ）
+### 5.1 增加 OSD（ ceph-deploy ）
 
 还可以通过 `ceph-deploy` 工具很方便的增加 OSD。
 
@@ -65,22 +13,7 @@
 	ssh {ceph-deploy-node}
 	cd /path/ceph-deploy-work-path
 
-2、列举磁盘。
-
-执行下列命令列举一节点上的磁盘：
-
-	ceph-deploy disk list {node-name [node-name]...}
-
-3、格式化磁盘。
-
-用下列命令格式化（删除分区表）磁盘，以用于 Ceph ：
-
-    ceph-deploy disk zap {osd-server-name}:{disk-name}
-    ceph-deploy disk zap osdserver1:sdb
-
-**重要：** 这会删除磁盘上的所有数据。
-
-4、准备 OSD。
+2、准备 OSD
 
     ceph-deploy osd prepare {node-name}:{data-disk}[:{journal-disk}] --filestore
     ceph-deploy osd prepare osdserver1:sdb:/dev/ssd --filestore
@@ -94,7 +27,7 @@
 
 **注意：** 在一个节点运行多个 OSD 守护进程、且多个 OSD 守护进程共享一个日志分区时，你应该考虑整个节点的最小 CRUSH 故障域，因为如果这个 SSD 坏了，所有用其做日志的 OSD 守护进程也会失效。
 
-5、准备好 OSD 后，可以用下列命令激活它。
+3、准备好 OSD 后，可以用下列命令激活它。
 
 	ceph-deploy osd activate {node-name}:{data-disk-partition}
 	ceph-deploy osd activate osdserver1:/dev/sdb1
@@ -119,7 +52,7 @@
 
 执行完这一步后，会触发数据的恢复过程。此时应该等待数据恢复结束，集群恢复到 `HEALTH_OK` 状态，再进行下一步操作。
 
-3、删除 CRUSH Map 中的对应 OSD 条目，它就不再接收数据了。你也可以反编译 CRUSH Map、删除 device 列表条目、删除对应的 host 桶条目或删除 host 桶（如果它在 CRUSH Map 里，而且你想删除主机），重编译 CRUSH Map 并应用它。详情参见本手册第一部分 [9. 修改 Crushmap](./modify_crushmap.md) 。
+3、删除 CRUSH Map 中的对应 OSD 条目，它就不再接收数据了。
 
 	ceph osd crush remove {name}
 
@@ -137,19 +70,4 @@
 
 6、卸载 OSD 的挂载点。
 	
-	sudo umount /var/lib/ceph/osd/$cluster-{osd-num}
-
-7、登录到保存 `ceph.conf` 主拷贝的主机。
-
-    ssh {admin-host}
-    cd /etc/ceph
-    vim ceph.conf
-
-8、从 `ceph.conf` 配置文件里删除对应条目。
-
-	[osd.1]
-        	host = {hostname}
-
-9、从保存 `ceph.conf` 主拷贝的主机，把更新过的 `ceph.conf` 拷贝到集群其他主机的 `/etc/ceph` 目录下。
-
-如果在 `ceph.conf` 中没有定义各 OSD 入口，就不必执行第 7 ~ 9 步。
+	sudo umount /var/lib/ceph/osd/ceph-{osd-num}
