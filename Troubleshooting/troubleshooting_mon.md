@@ -48,6 +48,8 @@ Monitor 维护着 Ceph 集群的信息，如果 Monitor 无法正常提供服务
 
 当集群形成法定人数后，或在没有形成法定人数时通过管理套接字， 用 `ceph` 工具可以获得 `mon_status` 信息。命令会输出关于 monitor 的大多数信息，包括部分 `quorum_status` 命令的输出内容。
 
+	ceph mon_status -f json-pretty
+
 下面是 `mon_status` 的输出样例：
 
 	{
@@ -125,15 +127,6 @@ Monitor 维护着 Ceph 集群的信息，如果 Monitor 无法正常提供服务
 
 这意味着该 monitor 处于选举过程中。选举应该很快就可以完成，但偶尔也会卡住，这往往是 monitors 节点时钟偏移的一个标志，跳转至**时钟偏移**获取更多信息。如果时钟是正确同步的，可以搜集相关日志并向社区求助。此种情况除非是一些（*非常*）古老的 bug ，往往都是由时钟不同步引起的。
 
-**`synchronizing` 状态是什么情况？**
-
-这意味着该 monitor 正在和集群中的其他 monitor 进行同步以便加入法定人数。Monitor 的数据库越小，同步过程的耗时就越短。
-
-然而，如果你注意到 monitor 的状态从 synchronizing 变为 electing 后又变回 synchronizing ，那么就有问题了：集群的状态更新的太快（即产生新的 maps ），同步过程已经无法追赶上了。这种情况在早期版本中可以见到，但现在经过代码重构和增强，在较新版本中已经基本见不到了。
-
-**`leader` 或 `peon` 状态是什么情况？**
-
-这种情况不应该发生，但还是有一定概率会发生，这常和时钟偏移有关。如果你并没有时钟偏移的问题，请搜集相关的日志并向社区求助。
 
 #### 恢复 Monitor 损坏的 monmap
 
@@ -148,34 +141,6 @@ monmap 通常看起来是下面的样子，这取决于 monitor 的个数：
     2: 127.0.0.1:6795/0 mon.c
 
 不过也不一定就是这样的内容。比如，在早期版本的 Ceph 中，有一个严重 bug 会导致 `monmap` 的内容全为 0 。这意味着即使用 `monmaptool` 也不能读取它，因为全 0 的内容没有任何意义。另外一些情况，某个 monitor 所持有的 monmap 已严重过期，以至于无法搜寻到集群中的其他 monitors 。在这些状况下，你有两种可行的解决方法：
-
-**销毁 monitor 然后新建**
-
-只有在你确定不会丢失保存在该 monitor 上的数据时，你才能够采用这个方法。也就是说，集群中还有其他运行正常的 monitors，以便新 monitor 可以和其他 monitors 达到同步。请谨记，销毁一个 monitor 时，如果没有其上数据的备份，可能会丢失数据。
-
-**给 monitor 手动注入 monmap**
-
-通常是最安全的做法。你应该从剩余的 monitor 中抓取 monmap，然后手动注入 monmap 有问题的 monitor 节点。
-
-下面是基本步骤：
-
-1、是否已形成法定人数？如果是，从法定人数中抓取 monmap ：
-
-	ceph mon getmap -o /tmp/monmap
-
-2、没有形成法定人数？直接从其他 monitor 节点上抓取 monmap （这里假定你抓取 monmap 的 monitor 的 id 是 ID-FOO 并且守护进程已经停止运行）：
-
-	ceph-mon -i ID-FOO --extract-monmap /tmp/monmap
-
-3、停止你想要往其中注入 monmap 的 monitor。
-
-4、注入 monmap 。
-
-	ceph-mon -i ID --inject-monmap /tmp/monmap
-
-5、启动 monitor 。
-
-请记住，能够注入 monmap 是一个很强大的特性，如果滥用可能会对 monitor 造成大破坏，因为这样做会覆盖 monitor 持有的最新 monmap 。
 
 #### 时钟偏移
 
@@ -200,19 +165,6 @@ Monitor 会用 `HEALTH_WARN` 的方式警告你。 `ceph health detail` 应该�
 **如果存在时钟偏移该怎么处理？**
 
 同步各 monitor 节点的时钟。运行 NTP 客户端会有帮助。如果你已经启动了 NTP 服务，但仍遭遇此问题，检查一下使用的 NTP 服务器是否离你的网络太过遥远，然后可以考虑在你的网络环境中运行自己的 NTP 服务器。最后这种选择可趋于减少 monitor 时钟偏移带来的问题。
-
-#### 客户端无法连接或挂载
-
-检查 IP 过滤表。某些操作系统安装工具会给 `iptables` 增加一条 `REJECT` 规则。这条规则会拒绝所有尝试连接该主机的客户端（除了 `ssh` ）。如果你的 monitor 主机设置了这条防火墙 `REJECT` 规则，客户端从其他节点连接过来时就会超时失败。你需要定位出拒绝客户端连接 Ceph 守护进程的那条 `iptables` 规则。比如，你需要对类似于下面的这条规则进行适当处理：
-
-	REJECT all -- anywhere anywhere reject-with icmp-host-prohibited
-
-你还需要给 Ceph 主机的 IP 过滤表增加规则，以确保客户端可以访问 Ceph monitor （默认端口 6789 ）和 Ceph OSD （默认 6800 ~ 7300 ）的相关端口。
-
-	iptables -A INPUT -m multiport -p tcp -s {ip-address}/{netmask} --dports 6789,6800:7300 -j ACCEPT
-
-或者，如果你的环境**允许**，也可以直接关闭主机的防火墙。
-
 
 #### 磁盘空间不足导致 MON DOWN
 
