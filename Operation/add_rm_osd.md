@@ -23,10 +23,6 @@
 
 `prepare` 命令只准备 OSD 。在大多数操作系统中，硬盘分区创建后，不用 `activate` 命令也会自动执行 `activate` 阶段（通过 Ceph 的 `udev` 规则）。
 
-前例假定一个硬盘只会用于一个 OSD 守护进程，以及一个到 SSD 日志分区的路径。我们建议把日志存储于另外的驱动器以最优化性能；你也可以指定一单独的驱动器用于日志（也许比较昂贵）、或者把日志放到 OSD 数据盘（不建议，因为它有损性能）。前例中我们把日志存储于分好区的固态硬盘。
-
-**注意：** 在一个节点运行多个 OSD 守护进程、且多个 OSD 守护进程共享一个日志分区时，你应该考虑整个节点的最小 CRUSH 故障域，因为如果这个 SSD 坏了，所有用其做日志的 OSD 守护进程也会失效。
-
 3、准备好 OSD 后，可以用下列命令激活它。
 
 	ceph-deploy osd activate {node-name}:{data-disk-partition}
@@ -44,7 +40,7 @@
 1、停止需要剔除的 OSD 进程，让其他的 OSD 知道这个 OSD 不提供服务了。停止 OSD 后，状态变为 `down` 。
 
 	ssh {osd-host}
-    sudo stop ceph-osd id={osd-num}
+    systemctl stop ceph-osd@{osd-num}
 
 2、将 OSD 标记为 `out` 状态，这个一步是告诉 mon，这个 OSD 已经不能服务了，需要在其他的 OSD 上进行数据的均衡和恢复了。
 
@@ -71,3 +67,9 @@
 6、卸载 OSD 的挂载点。
 	
 	sudo umount /var/lib/ceph/osd/ceph-{osd-num}
+
+如果删除一台主机，操作完以上6步删除完这台服务器所有osd之后，这台服务器的主机名仍然在crush map里面，这时候需要执行第7步
+
+7、从osd crush map删除主机
+
+	ceph osd crush remove ${HOSTNAME}

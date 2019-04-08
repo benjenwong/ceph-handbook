@@ -165,7 +165,7 @@ use_https = False
 
 - 列出test桶内对象
 
-    s3cmd ls s3://test
+    s3cmd ls s3://BUCKET_NAME
 
 - 创建桶
 
