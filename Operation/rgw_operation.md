@@ -1,4 +1,4 @@
-# 8. 对象存储常用操作
+# 9. 对象存储常用操作
 ---
 
 
@@ -16,7 +16,7 @@ Tstack对象存储对外部署，有两种部署模型：
 
 以下操作皆使用命令行工具
 
-### 8.1 用户管理
+### 9.1 用户管理
 
 #### 用户创建
 
@@ -126,13 +126,13 @@ Ceph存储集群提供了一个管理API，使用户能够通过REST API执行�
 
     radosgw-admin caps rm --uid=test --caps="users=\*;buckets=\*"
 
-### 8.2 桶操作
+### 9.2 桶操作
 
-#### 8.2.1 Windows操作系统
+#### 9.2.1 Windows操作系统
 
 windows操作系统可使用S3Browser工具来操作，该工具与使用手册在部署包 `ansible-deploy\roles\ansible-ceph\ceph-rgw\files` 目录下
 
-#### 8.2.2 类Uninx操作系统
+#### 9.2.2 类Uninx操作系统
 
 我们想要在类 Unix 系统下适用 S3 服务，可以使用工具 s3cmd。安装方法：
 
